@@ -1,0 +1,258 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --neon-cyan: #00f5ff;
+    --neon-green: #00ff88;
+    --neon-purple: #7b2fff;
+    --neon-pink: #ff2d78;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 245, 255, 0.3) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(0, 245, 255, 0.3);
+    border-radius: 2px;
+  }
+
+  body {
+    @apply antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .dark body {
+    background: #080b12;
+  }
+}
+
+@layer components {
+  /* Glass Card */
+  .glass-card {
+    @apply relative overflow-hidden rounded-2xl border border-white/10;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .glass-card-light {
+    @apply relative overflow-hidden rounded-2xl border border-black/10 bg-white/70;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* Neon Text */
+  .neon-text-cyan {
+    color: #00f5ff;
+    text-shadow: 0 0 10px rgba(0, 245, 255, 0.6);
+  }
+
+  .neon-text-green {
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+  }
+
+  /* Neon Border */
+  .neon-border {
+    box-shadow: 0 0 0 1px rgba(0, 245, 255, 0.4), 0 0 20px rgba(0, 245, 255, 0.1);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #00f5ff 0%, #7b2fff 50%, #ff2d78 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Input field dark */
+  .input-dark {
+    @apply w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 outline-none transition-all duration-200;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .input-dark:focus {
+    border-color: rgba(0, 245, 255, 0.5);
+    box-shadow: 0 0 0 2px rgba(0, 245, 255, 0.1);
+    background: rgba(255,255,255,0.07);
+  }
+
+  /* Input field light */
+  .input-light {
+    @apply w-full px-4 py-3 rounded-xl text-gray-800 placeholder-gray-400 outline-none transition-all duration-200;
+    background: rgba(0,0,0,0.05);
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .input-light:focus {
+    border-color: rgba(123, 47, 255, 0.5);
+    box-shadow: 0 0 0 2px rgba(123, 47, 255, 0.1);
+  }
+
+  /* Button primary */
+  .btn-primary {
+    @apply relative px-6 py-3 rounded-xl font-semibold text-white transition-all duration-200 overflow-hidden;
+    background: linear-gradient(135deg, #00f5ff 0%, #7b2fff 100%);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px rgba(0, 245, 255, 0.3);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  /* Button secondary */
+  .btn-secondary {
+    @apply px-6 py-3 rounded-xl font-medium transition-all duration-200;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.8);
+  }
+
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(0, 245, 255, 0.4);
+  }
+
+  /* Category badge */
+  .category-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  /* Stat card value */
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    @apply text-2xl font-semibold;
+  }
+
+  /* Chart container */
+  .chart-container {
+    @apply w-full h-full;
+  }
+}
+
+/* Animated background grid */
+.bg-grid {
+  background-image: 
+    linear-gradient(rgba(0,245,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,245,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Glow orbs */
+.orb-cyan {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,245,255,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.orb-purple {
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(123,47,255,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Loading shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Custom recharts styles */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: rgba(255,255,255,0.05) !important;
+}
+
+.recharts-text {
+  fill: rgba(255,255,255,0.5) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 11px !important;
+}
+
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: rgba(13,17,23,0.95) !important;
+  border: 1px solid rgba(0,245,255,0.2) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+/* Sidebar animation */
+.sidebar-item {
+  transition: all 0.15s ease;
+}
+
+.sidebar-item:hover {
+  transform: translateX(4px);
+}
+
+/* Transaction list item animation */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.txn-item {
+  animation: fadeSlideIn 0.2s ease-out forwards;
+}
+
+/* Chat bubble animations */
+@keyframes bubbleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.bubble-in {
+  animation: bubbleIn 0.2s ease-out forwards;
+}
+
+/* Typing indicator */
+@keyframes typingDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+.typing-dot:nth-child(1) { animation: typingDot 1.2s ease-in-out infinite; }
+.typing-dot:nth-child(2) { animation: typingDot 1.2s ease-in-out 0.15s infinite; }
+.typing-dot:nth-child(3) { animation: typingDot 1.2s ease-in-out 0.3s infinite; }

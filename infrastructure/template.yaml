@@ -1,0 +1,540 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: FinanceSaathi - Serverless Financial Analytics Platform
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 256
+    Architectures: [arm64]
+    Environment:
+      Variables:
+        USERS_TABLE:            !Ref UsersTable
+        TRANSACTIONS_TABLE:     !Ref TransactionsTable
+        BUDGETS_TABLE:          !Ref BudgetsTable
+        ANALYTICS_CACHE_TABLE:  !Ref AnalyticsCacheTable
+        JWT_SECRET:             !Ref JWTSecret
+        ALLOWED_ORIGIN:         !Ref AllowedOrigin
+        NODE_ENV:               production
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,Authorization'"
+      AllowOrigin:  "'*'"
+
+Parameters:
+  JWTSecret:
+    Type: String
+    NoEcho: true
+    Description: Secret key for JWT signing (min 32 chars)
+    MinLength: 32
+
+  OpenAIKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: OpenAI API key (optional)
+
+  GeminiKey:
+    Type: String
+    NoEcho: true
+    Default: AIzaSyA4PDM3JDc_LmXue9FBeSdnnNsY9BU3b80
+    Description: Google Gemini API key (optional)
+
+  ExchangeRateKey:
+    Type: String
+    NoEcho: true
+    Default: ''
+    Description: ExchangeRate-API key (optional, uses static fallback if empty)
+
+  AIProvider:
+    Type: String
+    Default: gemini
+    AllowedValues: [openai, gemini]
+    Description: Which AI provider to use
+
+  AllowedOrigin:
+    Type: String
+    Default: '*'
+    Description: CloudFront distribution URL for CORS
+
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [dev, staging, prod]
+
+Resources:
+
+  # ─── DynamoDB Tables ───────────────────────────────────────────────────────
+
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub 'fs-users-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: email-index
+          KeySchema:
+            - AttributeName: email
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  TransactionsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub 'fs-transactions-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: userId-createdAt-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  BudgetsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Sub 'fs-budgets-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: budgetId
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: budgetId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: userId-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  AnalyticsCacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'fs-analytics-cache-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: cacheKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: cacheKey
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  AIChatsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'fs-ai-chats-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: messageId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: messageId
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  # ─── Lambda Functions ──────────────────────────────────────────────────────
+
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'fs-auth-${Environment}'
+      CodeUri: ../backend/
+      Handler: lambdas/auth.handler
+      Description: Handles user signup, login, and profile management
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+      Events:
+        Signup:
+          Type: Api
+          Properties:
+            Path: /auth/signup
+            Method: post
+        Login:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: post
+        GetProfile:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: get
+        UpdateProfile:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: put
+        ChangePassword:
+          Type: Api
+          Properties:
+            Path: /profile/security/password
+            Method: put
+        DeleteProfile:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: delete
+        OptionsSignup:
+          Type: Api
+          Properties:
+            Path: /auth/signup
+            Method: options
+        OptionsLogin:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: options
+        OptionsProfile:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: options
+        OptionsPassword:
+          Type: Api
+          Properties:
+            Path: /profile/security/password
+            Method: options
+
+  TransactionsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'fs-transactions-${Environment}'
+      CodeUri: ../backend/
+      Handler: lambdas/transactions.handler
+      Description: CRUD operations for financial transactions
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+      Events:
+        CreateTxn:
+          Type: Api
+          Properties:
+            Path: /transactions
+            Method: post
+        GetTxns:
+          Type: Api
+          Properties:
+            Path: /transactions
+            Method: get
+        UpdateTxn:
+          Type: Api
+          Properties:
+            Path: /transactions/{id}
+            Method: put
+        DeleteTxn:
+          Type: Api
+          Properties:
+            Path: /transactions/{id}
+            Method: delete
+        OptionsTxns:
+          Type: Api
+          Properties:
+            Path: /transactions
+            Method: options
+        OptionsTxn:
+          Type: Api
+          Properties:
+            Path: /transactions/{id}
+            Method: options
+
+  AnalyticsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'fs-analytics-${Environment}'
+      CodeUri: ../backend/
+      Handler: lambdas/analytics.handler
+      Description: Financial analytics, trends and category breakdown
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref TransactionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AnalyticsCacheTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref BudgetsTable
+      Events:
+        GetSummary:
+          Type: Api
+          Properties:
+            Path: /analytics
+            Method: get
+        GetTrend:
+          Type: Api
+          Properties:
+            Path: /analytics/trend
+            Method: get
+        GetCategories:
+          Type: Api
+          Properties:
+            Path: /analytics/categories
+            Method: get
+        OptionsAnalytics:
+          Type: Api
+          Properties:
+            Path: /analytics
+            Method: options
+        OptionsTrend:
+          Type: Api
+          Properties:
+            Path: /analytics/trend
+            Method: options
+        OptionsCategories:
+          Type: Api
+          Properties:
+            Path: /analytics/categories
+            Method: options
+
+  BudgetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'fs-budget-${Environment}'
+      CodeUri: ../backend/
+      Handler: lambdas/budget.handler
+      Description: Budget management and AI recommendations
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BudgetsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref TransactionsTable
+      Events:
+        CreateBudget:
+          Type: Api
+          Properties:
+            Path: /budget
+            Method: post
+        GetBudgets:
+          Type: Api
+          Properties:
+            Path: /budget
+            Method: get
+        UpdateBudget:
+          Type: Api
+          Properties:
+            Path: /budget/{budgetId}
+            Method: put
+        DeleteBudget:
+          Type: Api
+          Properties:
+            Path: /budget/{budgetId}
+            Method: delete
+        GetRecommendations:
+          Type: Api
+          Properties:
+            Path: /budget/recommendations
+            Method: get
+        OptionsBudget:
+          Type: Api
+          Properties:
+            Path: /budget
+            Method: options
+        OptionsBudgetId:
+          Type: Api
+          Properties:
+            Path: /budget/{budgetId}
+            Method: options
+        OptionsBudgetRecs:
+          Type: Api
+          Properties:
+            Path: /budget/recommendations
+            Method: options
+
+  AIFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'fs-ai-${Environment}'
+      CodeUri: ../backend/
+      Handler: lambdas/ai.query
+      Description: AI financial advisor powered by OpenAI/Gemini
+      Timeout: 30
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AIChatsTable
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAIKey
+          GEMINI_API_KEY: !Ref GeminiKey
+          AI_PROVIDER:    !Ref AIProvider
+          AI_CHATS_TABLE: !Ref AIChatsTable
+      Events:
+        AIQuery:
+          Type: Api
+          Properties:
+            Path: /ai/query
+            Method: post
+        AIHistory:
+          Type: Api
+          Properties:
+            Path: /ai/history
+            Method: get
+        OptionsAI:
+          Type: Api
+          Properties:
+            Path: /ai/query
+            Method: options
+
+  CurrencyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'fs-currency-${Environment}'
+      CodeUri: ../backend/
+      Handler: lambdas/currency.handler
+      Description: Real-time currency conversion and rates
+      Environment:
+        Variables:
+          EXCHANGE_RATE_API_KEY: !Ref ExchangeRateKey
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref AnalyticsCacheTable
+      Events:
+        Convert:
+          Type: Api
+          Properties:
+            Path: /currency/convert
+            Method: get
+        GetRates:
+          Type: Api
+          Properties:
+            Path: /currency/rates
+            Method: get
+        OptionsConvert:
+          Type: Api
+          Properties:
+            Path: /currency/convert
+            Method: options
+        OptionsRates:
+          Type: Api
+          Properties:
+            Path: /currency/rates
+            Method: options
+
+  # ─── S3 + CloudFront (Frontend) ───────────────────────────────────────────
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'fs-frontend-${Environment}-${AWS::AccountId}'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub '${FrontendBucket.Arn}/*'
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}'
+
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub 'fs-oac-${Environment}'
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_All
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt CloudFrontOAC.Id
+            S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # Managed-CachingOptimized
+          AllowedMethods: [GET, HEAD]
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiUrl'
+
+  CloudFrontUrl:
+    Description: CloudFront distribution URL
+    Value: !Sub 'https://${CloudFrontDistribution.DomainName}'
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontUrl'
+
+  FrontendBucketName:
+    Description: S3 bucket for frontend
+    Value: !Ref FrontendBucket
+
+  UsersTableName:
+    Value: !Ref UsersTable
+
+  TransactionsTableName:
+    Value: !Ref TransactionsTable

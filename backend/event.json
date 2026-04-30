@@ -1,0 +1,15 @@
+{
+  "httpMethod": "GET",
+  "path": "/transactions",
+  "queryStringParameters": {
+    "limit": "10"
+  },
+  "headers": {
+    "Authorization": "Bearer fake_token"
+  },
+  "requestContext": {
+    "authorizer": {
+      "userId": "123"
+    }
+  }
+}

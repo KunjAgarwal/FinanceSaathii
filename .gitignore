@@ -1,0 +1,121 @@
+# ────────────────────────────────────────────────────────────────
+# Project‑wide ignore file for FinanceSaathi
+# ────────────────────────────────────────────────────────────────
+
+# ---- Node / npm -------------------------------------------------
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ---- Build artefacts --------------------------------------------
+dist/
+build/
+.aws-sam/
+.vite/
+.vitepress/
+.svelte-kit/
+.next/
+.out/
+.nuxt/
+out/
+ssr/
+.cjs/
+.esm/
+.es/
+tmp/
+temp/
+
+# ---- IDE / editor ------------------------------------------------
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+*.swp
+*~
+*.log
+
+# ---- OS / system -------------------------------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.metadata
+*.class
+*.exe
+*.dll
+*.obj
+*.so
+*.dylib
+*.psd
+*.bak
+*.tmp
+*.temp
+*.~*
+*.lzma
+
+# ---- Environment files – NEVER commit secrets --------------------
+.env
+.env.*
+*.env
+*.local
+*.production
+*.staging
+*.dev
+
+# ---- Sensitive configuration ------------------------------------
+*.key
+*.pem
+*.crt
+*.pfx
+*.p12
+*.jks
+*.cer
+*.csr
+
+# ---- Large binary installers / distributables --------------------
+# The project contains a large Windows installer (~200 MB).  
+# It must never be tracked.
+sam.msi
+*.msi
+*.exe
+*.dmg
+*.iso
+
+# ---- Documentation generated files -------------------------------
+*.pdf
+*.docx
+*.xlsx
+*.pptx
+*.odt
+*.odf
+*.odg
+
+# ---- AWS / SAM local artifacts ----------------------------------
+.aws/
+samconfig.toml
+cloudformation.yaml
+cloudformation.template
+
+# ---- Test coverage / artefacts ----------------------------------
+coverage/
+*.lcov
+*.nyc_output
+*.pytest_cache
+*.coverage
+*.coveragerc
+
+# ---- Miscellaneous ------------------------------------------------
+*.gz
+*.zip
+*.tar
+*.tgz
+*.7z
+*.rar
+
+sam.msi
