@@ -163,7 +163,7 @@ aws s3 sync dist/ s3://YOUR_BUCKET_NAME/ --delete
 | `name` | String | |
 | `password` | String | bcrypt hash, never returned |
 | `currency` | String | INR/USD/EUR etc. |
-| `createdAt` | ISO string | |
+| `createdAt` | ISO string | | 
 
 ### fs-transactions
 | Attribute | Type | Notes |
@@ -269,5 +269,6 @@ IS_LOCAL=true node -e "require('./backend/lambdas/auth').signup({body: JSON.stri
 cd frontend
 npm run dev    # → http://localhost:3000
 ```
-#   F i n a n c e S a a t h i i  
+#   F i n a n c e S a a t h i i 
+ 
  
