@@ -9,4 +9,5 @@ manifest_hash = ""
 packagetype = "Zip"
 functions = ["AuthFunction", "TransactionsFunction", "AnalyticsFunction", "BudgetFunction", "AIFunction", "CurrencyFunction"]
 
+
 [layer_build_definitions]
